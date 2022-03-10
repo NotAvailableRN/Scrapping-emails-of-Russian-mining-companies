@@ -1,0 +1,40 @@
+import requests
+import bs4
+import re
+import csv
+
+base_url = 'http://www.mining-portal.ru/companies/?&p={}' #the site that we will scrapp. For loop will put pages inside {}
+
+companies_title_list = []
+companies_links = []
+
+for i in range(1, 50): #iterating through all pages
+    result = requests.get(base_url.format(i))
+    soup = bs4.BeautifulSoup(result.text, 'lxml')
+    companies_title = soup.find_all('div', class_='companies-title')
+    
+    for cmp in companies_title:
+        companies_title_list.append(cmp.text) #taking names of companies into list
+        
+    companies_contacts = soup.find_all('div', class_='companies-footer')
+    for y in companies_contacts:
+        link = y.contents[0].get('href')
+        new_link = "http://www.mining-portal.ru" + link.split('#')[0]
+        new_result = requests.get(new_link)
+        soup_two = bs4.BeautifulSoup(new_result.text, "lxml")
+        if soup_two.find_all('a', class_='orange'):
+            emails = soup_two.find_all('a', class_='orange') #finding emails of companies / if it has value (or in other words TRUE)
+            companies_links.append(emails[0].text) #put email to list
+        else:
+            companies_links.append('none') #else put "none" into list
+final_list = list(zip(companies_title_list, companies_links)) #zipping together two lists
+print(final_list)
+
+with open(file='emails.csv', mode='w',encoding="utf-16", newline='') as file:
+        writer = csv.writer(file, delimiter='\t')
+        headers = [('Предприятие',"email")]
+        
+        writer.writerows(headers)
+        
+        for final in final_list:
+            writer.writerow(final)
